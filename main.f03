@@ -10,54 +10,67 @@ program ising_model
     !Mersenne Twister RNG
     use mtmod
     
-    integer, parameter :: L = 10
-    real, parameter    :: T = 2.3
+    integer, parameter :: L = 10, nr=1000000
+    real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer :: S(0:L+1,0:L+1) 
     integer :: M,E
-
-    real    :: m0 = 0.75
-    
+    real    :: m0 = 0.5
+    integer :: i,j,t
+    integer :: tic,toc
+    character(len=10) :: namefile   
     
     call sgrnd(time())
     
-    open(11,file="magnetisation_40down.res", status="unknown")
+    tic = time()
     
+    do t = 10,10!0,nint((T1-T0)/dT)
     
-    !First generate a random initial configuration
-    do j = 1,L
-        do i = 1,L
-            if (grnd()<m0) then
-                S(i,j) = +1
-            else
-                S(i,j) = -1
-            endif
+    toc = time()
+    
+        !First generate a random initial configuration
+        do j = 1,L
+            do i = 1,L
+                if (grnd()<m0) then
+                    S(i,j) = +1
+                else
+                    S(i,j) = -1
+                endif
+            enddo
         enddo
-    enddo
-    !S = -1
-    !This part will make the rest of the code easier to write
-    S(0,:) = S(L,:)
-    S(L+1,:) = S(1,:)
-    S(:,0) = S(:,L)
-    S(:,L+1) = S(:,1)
+        !This part will make the rest of the code easier to write
+        S(0,:) = S(L,:)
+        S(L+1,:) = S(1,:)
+        S(:,0) = S(:,L)
+        S(:,L+1) = S(:,1)
     
-    !Initialise variables
-    M = sum(S(1:L,1:L))
-    E = 0
-    do j = 1,L
-        do i = 1,L
-            E = E - S(j,i)*(S(j,i+1)+S(j-1,i))
-        enddo    
-    enddo
-    !End of Initialisation
+        !Initialise variables
+        M = sum(S(1:L,1:L))
+        E = 0
+        do j = 1,L
+            do i = 1,L
+                E = E - S(j,i)*(S(j,i+1)+S(j-1,i))
+            enddo    
+        enddo
+        !End of Initialisation
     
-    do j = 1,10000
-    
-    call advance_metropolis(S,L,T,M,E)
+        !Surpass equilibration time
+        do j = 1,10000
+            call advance_metropolis(S,L,T0+t*dT,M,E)
+        enddo
+        
+        !Then start to sample
+        write(namefile,"(A1,I2,A1,I2,A4)") "l",L,"t",nint(T0*10)+t,".res"
+        open(11,file=namefile, status="unknown")
+        do j=1,nr
+            call advance_metropolis(S,L,T0+t*dT,M,E)
+            write(11,"(3I7)") j,M,E
+        enddo
+        
+        
+        print*,t,time()-tic,time()-toc
+        
+     enddo
 
-    write(11,"(3I7)") j,abs(M),E
-    enddo
-            
-    
 end
 
 !###############################################################################

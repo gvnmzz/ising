@@ -35,4 +35,4 @@ $(EXENAME): $(MODULES_OBJS) $(OBJS)
 .PHONY : clean
 
 clean:
-	rm -f $(EXENAME) *.o *.d *.mod *~ *.pdf play.pbs.*
+	rm -f $(EXENAME) *.o *.d *.mod *~ *.pdf play.pbs.* *.res
