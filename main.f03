@@ -10,22 +10,19 @@ program ising_model
     !Mersenne Twister RNG
     use mtmod
     
-    integer, parameter :: L = 10, nr=1000000
-    real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
+    integer, parameter :: L = 40, ns = L*L, nr=1000000
+    real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
     integer :: S(0:L+1,0:L+1) 
     integer :: M,E
-    real    :: m0 = 0.5
     integer :: i,j,t
-    integer :: tic,toc
-    character(len=10) :: namefile   
-    
-    call sgrnd(time())
+    integer :: tic
+    character(len=20) :: namefile
+
+    call sgrnd(1)!(time())
     
     tic = time()
     
-    do t = 10,10!0,nint((T1-T0)/dT)
-    
-    toc = time()
+    do t = 0,nint((T1-T0)/dT)
     
         !First generate a random initial configuration
         do j = 1,L
@@ -59,17 +56,15 @@ program ising_model
         enddo
         
         !Then start to sample
-        write(namefile,"(A1,I2,A1,I2,A4)") "l",L,"t",nint(T0*10)+t,".res"
+        write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
         open(11,file=namefile, status="unknown")
         do j=1,nr
             call advance_metropolis(S,L,T0+t*dT,M,E)
-            write(11,"(3I7)") j,M,E
+            write(11,*) j,float(M)/ns,float(E)/ns
         enddo
-        
-        
-        print*,t,time()-tic,time()-toc
-        
      enddo
+     
+     print *, "End",t,time()-tic
 
 end
 
@@ -93,7 +88,7 @@ subroutine advance_metropolis(S,L,T,M,E)
         !Select a spin
         x = int(grnd()*L)+1
         y = int(grnd()*L)+1
-        !Calculate dE. Use + because consider flipped spin in x,y
+        !Calculate dE. Use + because consider flipped spmin in x,y
         dE = 2*S(x,y)*(S(x+1,y)+S(x-1,y)+S(x,y+1)+S(x,y-1))
         if (dE<=0) then
             S(x,y) = -S(x,y)
@@ -121,9 +116,5 @@ subroutine advance_metropolis(S,L,T,M,E)
 end subroutine
 
 !###############################################################################
-
-    
-    
-    
-    
+            
     
