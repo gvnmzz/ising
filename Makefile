@@ -15,7 +15,7 @@ FC = $(F) $(FFLAGS)
 LD = $(F)
 
 # Set name of final executable file here
-EXENAME = geometric
+EXENAME = ising2d
 
 default:$(EXENAME)
 
