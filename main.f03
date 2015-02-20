@@ -18,7 +18,7 @@ program ising_model
     integer :: tic
     character(len=20) :: namefile
 
-    call sgrnd(1)!(time())
+    call sgrnd(time())
     
     tic = time()
     
@@ -60,7 +60,7 @@ program ising_model
         open(11,file=namefile, status="unknown")
         do j=1,nr
             call advance_metropolis(S,L,T0+t*dT,M,E)
-            write(11,*) j,float(M)/ns,float(E)/ns
+            write(11,*) abs(float(M))/ns,float(E)/ns
         enddo
      enddo
      
