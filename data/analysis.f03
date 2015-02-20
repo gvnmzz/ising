@@ -6,7 +6,7 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 40, nr=1000000, ntau = 50000, nboot = 50  
+    integer, parameter :: L = 40, nr=1000000, ntau = 50000  
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
     real*8    :: mts(nr),ets(nr)
@@ -20,7 +20,7 @@ program data_analysis
     !RNG Initialisation
     call sgrnd(time())
     
-    write(datafile,"(A4,I2,A4)") "datl",L,".res"
+ps    write(datafile,"(A4,I2,A4)") "datl",L,".res"
     open(12,file=datafile,action="write")
     
     do t = 0,ns
@@ -39,7 +39,7 @@ program data_analysis
         call bootstrap(mts,nr,tau,mchi,vchi,nboot,L*L,1.d1/(nint(T0*10)+t))
         
         write(12,"(F14.7,I7,10F14.7)") float(nint(T0*10)+t)/10, tau, &
-                    & mmagn,vmagn,mener,vener, mchi,vchi
+                    & mmagn,vmagn,mener,vener
         !Close the file
         close(11)
     enddo

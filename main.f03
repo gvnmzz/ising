@@ -10,7 +10,7 @@ program ising_model
     !Mersenne Twister RNG
     use mtmod
     
-    integer, parameter :: L = 20, ns = L*L, nr=1000000
+    integer, parameter :: L = 40, ns = L*L, nr=1000000
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
     integer :: S(0:L+1,0:L+1) 
     integer :: M,E
@@ -60,7 +60,7 @@ program ising_model
         open(11,file=namefile, status="unknown")
         do j=1,nr
             call advance_metropolis(S,L,T0+t*dT,M,E)
-            write(11,*) dabs(dfloat(M))/ns,dfloat(E)/ns
+            write(11,"(2F14.7)") dabs(dfloat(M))/ns,dfloat(E)/ns
         enddo
      enddo
      
