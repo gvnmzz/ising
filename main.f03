@@ -13,7 +13,7 @@ program ising_model
     integer, parameter :: L = 40, ns = L*L, nr=1000000
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
     integer :: S(0:L+1,0:L+1) 
-    integer :: M,E
+    integer*4 :: M,E
     integer :: i,j,t
     integer :: tic
     character(len=20) :: namefile
@@ -22,7 +22,7 @@ program ising_model
     
     tic = time()
     
-    do t = 0,nint((T1-T0)/dT)
+    do t = 0,30,30!,nint((T1-T0)/dT)
     
         !First generate a random initial configuration
         do j = 1,L
@@ -74,7 +74,8 @@ subroutine advance_metropolis(S,L,T,M,E)
 
     use mtmod
 
-    integer :: L,M,E,dE,x,y
+    integer :: L,dE,x,y
+    integer*4 :: M,E
     integer :: ns
     real    :: T,beta
     integer :: S(0:L+1,0:L+1)

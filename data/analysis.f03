@@ -6,12 +6,12 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 40, nr=1000000, ntau = 50000  
+    integer, parameter :: L = 40, nr=1000000, ntau = 50000, nboot = 100  
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
-    real*8    :: mts(nr),ets(nr)
+    real*8    :: mts(nr),ets(nr),prefact
     integer :: i,t,tau
-    real*8    :: mmagn,mener,vmagn,vener,mchi,vchi
+    real*8    :: mmagn,mener,vmagn,vener,mchi,vchi,mspc,vspc
     integer :: autocorrelationtime
     character(len=10) :: namefile,datafile
     
@@ -20,7 +20,7 @@ program data_analysis
     !RNG Initialisation
     call sgrnd(time())
     
-ps    write(datafile,"(A4,I2,A4)") "datl",L,".res"
+    write(datafile,"(A4,I2,A4)") "datl",L,".res"
     open(12,file=datafile,action="write")
     
     do t = 0,ns
@@ -30,16 +30,19 @@ ps    write(datafile,"(A4,I2,A4)") "datl",L,".res"
         open(11,file=namefile, action="read")
         !Read the file
         do i=1,nr
-            read(11,*) mts(i),ets(i)
+            read(11,"(2F14.7)") mts(i),ets(i)
         enddo
 
         tau = autocorrelationtime(mts(1:ntau),ntau)
         call statistics(mts,nr,tau,mmagn,vmagn)
         call statistics(ets,nr,tau,mener,vener)
-        call bootstrap(mts,nr,tau,mchi,vchi,nboot,L*L,1.d1/(nint(T0*10)+t))
+        prefact = 1.d0 / (dfloat(nint(T0*10)+t)/10) / (L*L)
+        call bootstrap(mts,nr,tau,mchi,vchi,nboot,prefact)
+        prefact = prefact / (dfloat(nint(T0*10)+t)/10)
+        call bootstrap(ets,nr,tau,mspc,vspc,nboot,prefact)
         
-        write(12,"(F14.7,I7,10F14.7)") float(nint(T0*10)+t)/10, tau, &
-                    & mmagn,vmagn,mener,vener
+        write(12,"(F14.7,I7,10(2x,E14.7))") float(nint(T0*10)+t)/10, tau, &
+                    & mmagn,vmagn,mener,vener,mchi,vchi,mspc,vspc
         !Close the file
         close(11)
     enddo
@@ -108,13 +111,13 @@ end subroutine
 
 !###############################################################################
 
-subroutine bootstrap(obs,nr,tau,mean,var,nboot,ns,beta)
+subroutine bootstrap(obs,nr,tau,mean,var,nboot,prefact)
     
     use mtmod
        
-    integer :: nr,ns,tau,nboot,i,j
+    integer :: nr,tau,nboot,i,j
     real*8  :: obs(nr),samp(nr),var,mean,s,q
-    real*8  :: conj(nboot),beta
+    real*8  :: conj(nboot),prefact
     
     !Create Sample
     do i = 1,nboot
@@ -123,7 +126,7 @@ subroutine bootstrap(obs,nr,tau,mean,var,nboot,ns,beta)
         enddo         
         call statistics(samp,nr,tau,mean,conj(i))
     enddo
-    conj = conj * ns * beta
+    conj = conj * prefact
     
     s = 0
     q = 0
@@ -139,7 +142,8 @@ subroutine bootstrap(obs,nr,tau,mean,var,nboot,ns,beta)
     
     return
 end subroutine
-     
+
+!###############################################################################
             
     
     
