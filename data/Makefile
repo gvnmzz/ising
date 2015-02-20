@@ -4,7 +4,7 @@ SOURCE=./
 PREFIX=./
 
 OBJS := analysis.o
-MODULES_OBJS := 
+MODULES_OBJS := mtwist.o
 
 # Provide any options and flags for the compiler here
 FFLAGS= -O2 -Wall -I$(PREFIX)
@@ -35,4 +35,4 @@ $(EXENAME): $(MODULES_OBJS) $(OBJS)
 .PHONY : clean
 
 clean:
-	rm -f $(EXENAME) *.o *.d *.mod *~ *.pdf play.pbs.* *.res
+	rm -f $(EXENAME) *.o *.d *.mod *~ *.pdf play.pbs.*

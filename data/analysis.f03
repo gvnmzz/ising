@@ -3,21 +3,28 @@
 !###############################################################################
 
 program data_analysis
+
+    use mtmod
     
-    integer, parameter :: L = 40, nr=1000000, ntau = 50000 
+    integer, parameter :: L = 40, nr=1000000, ntau = 50000, nboot = 50  
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
     real*8    :: mts(nr),ets(nr)
     integer :: i,t,tau
+    real*8    :: mmagn,mener,vmagn,vener,mchi,vchi
     integer :: autocorrelationtime
-    character(len=10) :: namefile,taufile
+    character(len=10) :: namefile,datafile
     
     external autocorrelationtime
-    write(taufile,"(A4,I2,A4)") "taul",L,".res"
-    open(12,file=taufile,action="write")
+    
+    !RNG Initialisation
+    call sgrnd(time())
+    
+    write(datafile,"(A4,I2,A4)") "datl",L,".res"
+    open(12,file=datafile,action="write")
     
     do t = 0,ns
-        print*,t
+        !print*,t
         !Open the file
         write(namefile,"(A1,I2,A1,I2,A4)") "l",L,"t",nint(T0*10)+t,".res"
         open(11,file=namefile, action="read")
@@ -27,8 +34,12 @@ program data_analysis
         enddo
 
         tau = autocorrelationtime(mts(1:ntau),ntau)
+        call statistics(mts,nr,tau,mmagn,vmagn)
+        call statistics(ets,nr,tau,mener,vener)
+        call bootstrap(mts,nr,tau,mchi,vchi,nboot,L*L,1.d1/(nint(T0*10)+t))
         
-        write(12,*) float(nint(T0*10)+t)/10, tau
+        write(12,"(F14.7,I7,10F14.7)") float(nint(T0*10)+t)/10, tau, &
+                    & mmagn,vmagn,mener,vener, mchi,vchi
         !Close the file
         close(11)
     enddo
@@ -46,7 +57,6 @@ function autocorrelationtime(obs,ntau) result (intau)
     
     chi0 = sum(obs**2)/ntau - (sum(obs)/ntau)**2
     tau = 0.
-    print*,chi0
     do i = 1, ntau
         a = 0
         b = 0
@@ -73,3 +83,66 @@ function autocorrelationtime(obs,ntau) result (intau)
     return
     
 end function
+
+!###############################################################################
+
+subroutine statistics(obs,nr,tau,mean,var)
+    
+    integer :: nr,tau,i
+    real*8  :: obs(nr),s,q,var,mean
+    
+    s = 0.d0
+    q = 0.d0
+    
+    do i = 1,nr
+        s = s + obs(i)
+    enddo
+    mean = s/nr
+    do i = 1,nr
+        q = (obs(i)-mean)**2
+    enddo
+    var = dfloat(1+2*tau)/(nr-1)*q
+    
+    return
+end subroutine
+
+!###############################################################################
+
+subroutine bootstrap(obs,nr,tau,mean,var,nboot,ns,beta)
+    
+    use mtmod
+       
+    integer :: nr,ns,tau,nboot,i,j
+    real*8  :: obs(nr),samp(nr),var,mean,s,q
+    real*8  :: conj(nboot),beta
+    
+    !Create Sample
+    do i = 1,nboot
+        do j = 1,nr
+            samp(j) = obs(int(grnd()*nr)+1)
+        enddo         
+        call statistics(samp,nr,tau,mean,conj(i))
+    enddo
+    conj = conj * ns * beta
+    
+    s = 0
+    q = 0
+    
+    do i = 1,nboot
+        s = s + conj(i)
+    enddo
+    mean = s/nboot
+    do i = 1,nboot
+        q = (conj(i)-mean)**2
+    enddo
+    var = q/nboot
+    
+    return
+end subroutine
+     
+            
+    
+    
+    
+    
+    
