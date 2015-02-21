@@ -6,7 +6,7 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 40, nr=1000000, ntau = 50000, nboot = 100  
+    integer, parameter :: L = 10, nr=1000000, ntau = 50000, nboot = 1000 
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
     real*8    :: mts(nr),ets(nr),prefact
