@@ -6,13 +6,13 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 40, nr=1000000, ntau = 50000, nboot = 100  
+    integer, parameter :: L = 40, nr=1000000, ntau = 50000 
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
-    real*8    :: mts(nr),ets(nr),prefact
+    real*8    :: mts(nr),ets(nr),prefact,obs(nr)
     integer :: i,t,tau
     real*8    :: mmagn,mener,vmagn,vener,mchi,vchi,mspc,vspc
-    integer :: autocorrelationtime
+    integer :: autocorrelationtime,nindep
     character(len=10) :: namefile,datafile
     
     external autocorrelationtime
@@ -24,7 +24,7 @@ program data_analysis
     open(12,file=datafile,action="write")
     
     do t = 0,ns
-        !print*,t
+        print*,t
         !Open the file
         write(namefile,"(A1,I2,A1,I2,A4)") "l",L,"t",nint(T0*10)+t,".res"
         open(11,file=namefile, action="read")
@@ -36,10 +36,20 @@ program data_analysis
         tau = autocorrelationtime(mts(1:ntau),ntau)
         call statistics(mts,nr,tau,mmagn,vmagn)
         call statistics(ets,nr,tau,mener,vener)
+        
+        nindep = nr /(2*tau)
+        do i = 1,nindep
+            obs(i) = mts(1 + (i-1)*2*tau)
+        enddo
+        call statistics(obs(1:nindep),nindep,1,mchi,vchi)
         prefact = 1.d0 / (dfloat(nint(T0*10)+t)/10) / (L*L)
-        call bootstrap(mts,nr,tau,mchi,vchi,nboot,prefact)
+        call jacknife(obs,nindep,mchi,vchi,prefact)
+        do i = 1,nindep
+            obs(i) = ets(1 + (i-1)*2*tau)
+        enddo
+        call statistics(obs(1:nindep),nindep,1,mspc,vspc)
         prefact = prefact / (dfloat(nint(T0*10)+t)/10)
-        call bootstrap(ets,nr,tau,mspc,vspc,nboot,prefact)
+        call jacknife(obs,nindep,mspc,vspc,prefact)
         
         write(12,"(F14.7,I7,10(2x,E14.7))") float(nint(T0*10)+t)/10, tau, &
                     & mmagn,vmagn,mener,vener,mchi,vchi,mspc,vspc
@@ -145,7 +155,20 @@ end subroutine
 
 !###############################################################################
             
+subroutine jacknife(obs,nr,mchi,vchi,prefact)
     
+    integer :: nr,i
+    real*8  :: mchi,vchi,obs(nr),conj(nr),prefact
+    
+    do i = 1,nr
+        conj(i) = dfloat(nr-1)/(nr-2)*vchi-(obs(i)-mchi)**2/(nr-2)
+    enddo
+    conj = conj * prefact
+    
+    call statistics(conj,nr,1,mchi,vchi)
+    
+    return
+end subroutine
     
     
     
