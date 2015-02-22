@@ -10,19 +10,21 @@ program ising_model
     !Mersenne Twister RNG
     use mtmod
     
-    integer, parameter :: L = 40, ns = L*L, nr=1000000
+    integer, parameter :: L = 10, ns = L*L, nr=1000000
+    integer, parameter :: nequ = 10000, ntau = 50000
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
     integer :: S(0:L+1,0:L+1) 
-    integer*4 :: M,E
+    integer :: M,E
     integer :: i,j,t
-    integer :: tic
-    character(len=20) :: namefile
+    integer :: tic,taue,taum,tauam
+!    character(len=20) :: namefile
+    real*8  :: mts(ntau),ets(ntau),amts(ntau)
 
     call sgrnd(time())
     
     tic = time()
     
-    do t = 0,30,30!,nint((T1-T0)/dT)
+    do t = 0,nint((T1-T0)/dT)
     
         !First generate a random initial configuration
         do j = 1,L
@@ -51,17 +53,34 @@ program ising_model
         !End of Initialisation
     
         !Surpass equilibration time
-        do j = 1,10000
+        do j = 1,nequ
             call advance_metropolis(S,L,T0+t*dT,M,E)
         enddo
         
-        !Then start to sample
-        write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
-        open(11,file=namefile, status="unknown")
-        do j=1,nr
+        !Find Equilibration Time
+        do j = 1,ntau
             call advance_metropolis(S,L,T0+t*dT,M,E)
-            write(11,"(2F14.7)") dabs(dfloat(M))/ns,dfloat(E)/ns
+            mts(j) = dfloat(M)/ns
+            amts(j) = dabs(mts(j))
+            ets(j) = dfloat(E)/ns
         enddo
+        call autocorrelationtime(mts,ntau,taum)
+        call autocorrelationtime(ets,ntau,taue)
+        call autocorrelationtime(amts,ntau,tauam)
+        
+        write(13,*) T0+t*dT,taum,taue,tauam
+        
+        
+        
+        
+        
+        !Then start to sample
+        !write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
+        !open(11,file=namefile, status="unknown")
+        !do j=1,nr
+        !    call advance_metropolis(S,L,T0+t*dT,M,E)
+        !    write(11,"(2F14.7)") dabs(dfloat(M))/ns,dfloat(E)/ns
+        !enddo
      enddo
      
      print *, "End",t,time()-tic
@@ -117,5 +136,41 @@ subroutine advance_metropolis(S,L,T,M,E)
 end subroutine
 
 !###############################################################################
+
+subroutine autocorrelationtime(obs,ntau,intau)
+    
+    integer :: ntau,intau
+    real*8  :: obs(ntau)
+    real*8  :: chi0, chi, a, b, c, tau
+    integer :: i,j
+    
+    chi0 = sum(obs**2)/ntau - (sum(obs)/ntau)**2
+    tau = 0.
+    do i = 1, ntau
+        a = 0
+        b = 0
+        c = 0
+        do j = 1, ntau - i
+            a = a + obs(j)*obs(j+i)
+            b = b + obs(j)
+            c = c + obs(j+i)
+        enddo
+        a = a / (ntau - i)
+        b = b / (ntau - i)
+        c = c / (ntau - i)
+        
+        chi = (a - b * c)/chi0
+        tau = tau + chi
+        
+        if (chi<1.e-3) then
+            intau = int(tau) + 1
+            return
+        endif
+    enddo
+        
+    intau = int(tau) + 1
+    return
+    
+end subroutine
             
     
