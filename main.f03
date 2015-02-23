@@ -17,12 +17,15 @@ program ising_model
     real*8  :: M,E
     integer :: i,j,t
     integer :: tic,tau
-    character(len=20) :: namefile
+    character(len=20) :: namefile,taufile
     real*8  :: mts(ntau)
 
     call sgrnd(time())
     
     tic = time()
+    
+    write(taufile,"(A6,I2,A7)") "data/l",L,"tau.res"
+    open(12,file=taufile,action="write")
     
     do t = 0,nint((T1-T0)/dT)
     
@@ -50,6 +53,7 @@ program ising_model
                 E = E - S(j,i)*(S(j,i+1)+S(j-1,i))
             enddo    
         enddo
+        E = E / ns
         !End of Initialisation
     
         !Surpass equilibration time
@@ -62,17 +66,21 @@ program ising_model
             call advance_metropolis(S,L,T0+t*dT,M,E)
             mts(j) = M
         enddo
+        
         call autocorrelationtime(mts,ntau,tau)
+        write(12,"(F7.3,I5)") float(nint(T0*10)+t)/10,tau
         
         !Then start to sample
         write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
-        open(11,file=namefile, status="unknown")
+        open(11,file=namefile, action="write")
         do j=1,nr
             call advance_metropolis(S,L,T0+t*dT,M,E)
             write(11,"(2F14.7)") M,E
         enddo
+        close(11)
      enddo
      
+     close(12)
      print *, "End",t,time()-tic
 
 end
