@@ -6,7 +6,7 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 40, nr=1000000, ntau = 50000 
+    integer, parameter :: L = 10, nr=1000000, ntau = 50000 
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
     real*8    :: mts(nr),ets(nr),prefact,obs(nr)
@@ -33,6 +33,8 @@ program data_analysis
             read(11,"(2F14.7)") mts(i),ets(i)
         enddo
 
+        mts = dabs(mts)
+
         tau = autocorrelationtime(mts(1:ntau),ntau)
         call statistics(mts,nr,tau,mmagn,vmagn)
         call statistics(ets,nr,tau,mener,vener)
@@ -42,7 +44,7 @@ program data_analysis
             obs(i) = mts(1 + (i-1)*2*tau)
         enddo
         call statistics(obs(1:nindep),nindep,1,mchi,vchi)
-        prefact = 1.d0 / (dfloat(nint(T0*10)+t)/10) / (L*L)
+        prefact = 1.d0 / (dfloat(nint(T0*10)+t)/10) * (L*L)
         call jacknife(obs,nindep,mchi,vchi,prefact)
         do i = 1,nindep
             obs(i) = ets(1 + (i-1)*2*tau)
@@ -112,7 +114,7 @@ subroutine statistics(obs,nr,tau,mean,var)
     enddo
     mean = s/nr
     do i = 1,nr
-        q = (obs(i)-mean)**2
+        q = q + (obs(i)-mean)**2
     enddo
     var = dfloat(1+2*tau)/(nr-1)*q
     
