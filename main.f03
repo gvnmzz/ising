@@ -14,11 +14,11 @@ program ising_model
     integer, parameter :: nequ = 10000, ntau = 50000
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
     integer :: S(0:L+1,0:L+1) 
-    integer :: M,E
+    real*8  :: M,E
     integer :: i,j,t
-    integer :: tic,taue,taum,tauam
-!    character(len=20) :: namefile
-    real*8  :: mts(ntau),ets(ntau),amts(ntau)
+    integer :: tic,tau
+    character(len=20) :: namefile
+    real*8  :: mts(ntau)
 
     call sgrnd(time())
     
@@ -43,8 +43,8 @@ program ising_model
         S(:,L+1) = S(:,1)
     
         !Initialise variables
-        M = sum(S(1:L,1:L))
-        E = 0
+        M = dfloat(sum(S(1:L,1:L)))/ns
+        E = 0.d0
         do j = 1,L
             do i = 1,L
                 E = E - S(j,i)*(S(j,i+1)+S(j-1,i))
@@ -60,27 +60,17 @@ program ising_model
         !Find Equilibration Time
         do j = 1,ntau
             call advance_metropolis(S,L,T0+t*dT,M,E)
-            mts(j) = dfloat(M)/ns
-            amts(j) = dabs(mts(j))
-            ets(j) = dfloat(E)/ns
+            mts(j) = M
         enddo
-        call autocorrelationtime(mts,ntau,taum)
-        call autocorrelationtime(ets,ntau,taue)
-        call autocorrelationtime(amts,ntau,tauam)
-        
-        write(13,*) T0+t*dT,taum,taue,tauam
-        
-        
-        
-        
+        call autocorrelationtime(mts,ntau,tau)
         
         !Then start to sample
-        !write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
-        !open(11,file=namefile, status="unknown")
-        !do j=1,nr
-        !    call advance_metropolis(S,L,T0+t*dT,M,E)
-        !    write(11,"(2F14.7)") dabs(dfloat(M))/ns,dfloat(E)/ns
-        !enddo
+        write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
+        open(11,file=namefile, status="unknown")
+        do j=1,nr
+            call advance_metropolis(S,L,T0+t*dT,M,E)
+            write(11,"(2F14.7)") M,E
+        enddo
      enddo
      
      print *, "End",t,time()-tic
@@ -94,7 +84,7 @@ subroutine advance_metropolis(S,L,T,M,E)
     use mtmod
 
     integer :: L,dE,x,y
-    integer*4 :: M,E
+    real*8  :: M,E
     integer :: ns
     real    :: T,beta
     integer :: S(0:L+1,0:L+1)
@@ -127,8 +117,8 @@ subroutine advance_metropolis(S,L,T,M,E)
             if (x==L) S(0,y) = -S(0,y)
             if (y==1) S(x,L+1) = -S(x,L+1)
             if (y==L) S(x,0) = -S(x,0)
-            M = M + 2*S(x,y)
-            E = E + dE
+            M = M + dfloat(2*S(x,y))/ns
+            E = E + dfloat(dE)/ns
         endif
     enddo
     !End of a sweep of Metropolis
