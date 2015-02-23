@@ -6,7 +6,7 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 20, nr=1000000, ntau = 50000, nboot = 1000 
+    integer, parameter :: L = 10, nr=1000000, ntau = 50000, nboot = 10 
     real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
     real*8    :: mts(nr),ets(nr),prefact
@@ -24,7 +24,7 @@ program data_analysis
     open(12,file=datafile,action="write")
     
     do t = 0,ns
-        !print*,t
+        print*,t
         !Open the file
         write(namefile,"(A1,I2,A1,I2,A4)") "l",L,"t",nint(T0*10)+t,".res"
         open(11,file=namefile, action="read")
@@ -32,12 +32,17 @@ program data_analysis
         do i=1,nr
             read(11,"(2F14.7)") mts(i),ets(i)
         enddo
-
+        
+        mts = abs(mts)
+        
         tau = autocorrelationtime(mts(1:ntau),ntau)
+        
         call statistics(mts,nr,tau,mmagn,vmagn)
         call statistics(ets,nr,tau,mener,vener)
-        prefact = 1.d0 / (dfloat(nint(T0*10)+t)/10) / (L*L)
+        
+        prefact = 1.d0 / (dfloat(nint(T0*10)+t)/10) * (L*L)
         call bootstrap(mts,nr,tau,mchi,vchi,nboot,prefact)
+        
         prefact = prefact / (dfloat(nint(T0*10)+t)/10)
         call bootstrap(ets,nr,tau,mspc,vspc,nboot,prefact)
         
@@ -102,7 +107,7 @@ subroutine statistics(obs,nr,tau,mean,var)
     enddo
     mean = s/nr
     do i = 1,nr
-        q = (obs(i)-mean)**2
+        q = q + (obs(i)-mean)**2
     enddo
     var = dfloat(1+2*tau)/(nr-1)*q
     
