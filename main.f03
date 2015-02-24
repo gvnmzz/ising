@@ -9,10 +9,10 @@ program ising_model
     
     integer, parameter :: L = 20, ns = L*L
     integer, parameter :: nr=1000000, nequ = 10000, ntau = 50000
-    real, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
+    real*8, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
     
     integer :: S(0:L+1,0:L+1) !This is our spin matrix
-    real*8  :: M,E            !Magnetisation and energy
+    real*8  :: M,E,dE            !Magnetisation and energy
     real*8  :: mts(ntau)      !Time series of the magnetisation
     
     
@@ -33,7 +33,7 @@ program ising_model
     
     
     !Start the cycle over the temperature
-    do t = 15,15!nint((T1-T0)/dT)
+    do t = 15,15!0,nint((T1-T0)/dT)
         !It is easy to start from a configuration of all spins up
         S = 1
         M = ns          !Total Magnetisation
@@ -41,12 +41,12 @@ program ising_model
         
         !Surpass equilibration time
         do j = 1,nequ
-            call advance_metropolis(S,L,T0+t*dT,M,E)
+            call advance_metropolis(S,L,T0+t*dT,M,E,dE)
         enddo
         
         !Find Autocorrelation Time
         do j = 1,ntau
-            call advance_metropolis(S,L,T0+t*dT,M,E)
+            call advance_metropolis(S,L,T0+t*dT,M,E,dE)
             mts(j) = dabs(M)/ns
         enddo
         
@@ -58,9 +58,9 @@ program ising_model
         open(11,file=namefile, action="write")
         do j=1,nr
             do i=1,2*tau
-                call advance_metropolis(S,L,T0+t*dT,M,E)
+                call advance_metropolis(S,L,T0+t*dT,M,E,dE)
             enddo
-            write(11,"(2F14.7)") M/ns,E/ns
+            write(11,"(4F14.7)") M/ns,E/ns,dE
         enddo
         close(11)
         
@@ -72,7 +72,7 @@ end program
 
 !###############################################################################
 
-subroutine advance_metropolis(S,L,T,M,E)
+subroutine advance_metropolis(S,L,T,M,E,dE)
     
     !Mersenne Twister RNG
     use mtmod
@@ -80,12 +80,12 @@ subroutine advance_metropolis(S,L,T,M,E)
     integer :: L,x,y
     real*8  :: M,E,dE
     integer :: ns
-    real    :: T,beta
+    real*8    :: T,beta
     integer :: S(0:L+1,0:L+1)
     logical :: flipflag
     
     ns = L*L
-    beta = 1.0/T
+    beta = 1.d0/T
     
     !Start Metropolis sweep
     do i = 1,ns
@@ -98,7 +98,7 @@ subroutine advance_metropolis(S,L,T,M,E)
             S(x,y) = -S(x,y)
             flipflag = .TRUE.
         else
-            if (grnd()<exp(-beta*dE)) then
+            if (grnd()<dexp(-beta*dE)) then
                 S(x,y) = -S(x,y)
                 flipflag = .TRUE.
             else
@@ -116,6 +116,7 @@ subroutine advance_metropolis(S,L,T,M,E)
         endif
     enddo
     !End of a sweep of Metropolis
+    return
     
 end subroutine
 
