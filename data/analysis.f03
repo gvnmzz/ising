@@ -6,7 +6,7 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 10, nr=1000000, ntau = 50000 
+    integer, parameter :: L = 20, nr=1000000, ntau = 50000 
     real*8, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
     real*8    :: mts(nr),ets(nr),prefact
@@ -22,7 +22,7 @@ program data_analysis
     write(datafile,"(A4,I2,A4)") "datl",L,".res"
     open(12,file=datafile,action="write")
     
-    do t = 0,ns
+    do t = 0,14!,ns
         print*,t
         !Open the file
         write(namefile,"(A1,I2,A1,I2,A4)") "l",L,"t",nint(T0*10)+t,".res"
@@ -38,12 +38,12 @@ program data_analysis
         call statistics(ets,nr,0,mener,vener)
         
         mchi = mmagn
-        vchi = vmagn
+        vchi = vmagn*nr
         prefact = dfloat(L*L) / (dfloat(nint(T0*10)+t)/10)
         call jacknife(mts,nr,mchi,vchi,prefact)
 
         mspc = mener
-        vspc = vener
+        vspc = vener*nr
         prefact = prefact / (dfloat(nint(T0*10)+t)/10)
         call jacknife(ets,nr,mspc,vspc,prefact)
         
@@ -73,41 +73,7 @@ subroutine statistics(obs,nr,tau,mean,var)
     do i = 1,nr
         q = q + (obs(i)-mean)**2
     enddo
-    var = dfloat(1+2*tau)/(nr-1)*q
-    
-    return
-end subroutine
-
-!###############################################################################
-
-subroutine bootstrap(obs,nr,tau,mean,var,nboot,prefact)
-    
-    use mtmod
-       
-    integer :: nr,tau,nboot,i,j
-    real*8  :: obs(nr),samp(nr),var,mean,s,q
-    real*8  :: conj(nboot),prefact
-    
-    !Create Sample
-    do i = 1,nboot
-        do j = 1,nr
-            samp(j) = obs(int(grnd()*nr)+1)
-        enddo         
-        call statistics(samp,nr,tau,mean,conj(i))
-    enddo
-    conj = conj * prefact
-    
-    s = 0
-    q = 0
-    
-    do i = 1,nboot
-        s = s + conj(i)
-    enddo
-    mean = s/nboot
-    do i = 1,nboot
-        q = (conj(i)-mean)**2
-    enddo
-    var = q/nboot
+    var = dfloat(1+2*tau)/(nr-1)*q/nr
     
     return
 end subroutine
@@ -120,11 +86,12 @@ subroutine jacknife(obs,nr,mchi,vchi,prefact)
     real*8  :: mchi,vchi,obs(nr),conj(nr),prefact
     
     do i = 1,nr
-        conj(i) = dfloat(nr-1)/(nr-2)*vchi-1.d0/(nr-1)*(obs(i)-mchi)**2
+        conj(i) = dfloat(nr-1)/(nr-2)*vchi-1.d0/(nr-2)*(obs(i)-mchi)**2
     enddo
     conj = conj * prefact
     
     call statistics(conj,nr,0,mchi,vchi)
+    vchi = vchi*(nr-1)*nr
     
     return
 end subroutine
