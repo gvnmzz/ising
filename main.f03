@@ -12,12 +12,12 @@ program ising_model
     real*8, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1, m0 = 0.5
     
     integer :: S(0:L+1,0:L+1) !This is our spin matrix
-    real*8  :: M,E,dE            !Magnetisation and energy
+    real*8  :: M,En,dEn,beta  !Magnetisation and energy
     real*8  :: mts(ntau)      !Time series of the magnetisation
+    real*8  :: lfact
     
     
-    
-    integer :: j,t,i
+    integer :: j,t,i,ii,x,y
     integer :: tic,tau
     
     character(len=20) :: taufile,namefile
@@ -33,34 +33,88 @@ program ising_model
     
     
     !Start the cycle over the temperature
-    do t = 15,15!0,nint((T1-T0)/dT)
+    do t = 16,nint((T1-T0)/dT)
+    
         !It is easy to start from a configuration of all spins up
         S = 1
         M = ns          !Total Magnetisation
-        E = -2*ns       !Total Energy
+        En = -2*ns       !Total Energy
+        beta = 1.d0/(T0+t*dT)
+        lfact = L/(1.d0+epsilon(0.d0))
         
         !Surpass equilibration time
         do j = 1,nequ
-            call advance_metropolis(S,L,T0+t*dT,M,E,dE)
+            !This is an entire sweep of the Metropolis Algorithm
+            do i = 1,ns
+            !Select a spin
+            x = int(grnd()*lfact)+1
+            y = int(grnd()*lfact)+1
+            !Calculate dE. Use + because consider flipped spin in x,y
+            dEn = dfloat(2*S(x,y)*(S(x+1,y)+S(x-1,y)+S(x,y+1)+S(x,y-1)))
+            if (grnd()<dexp(-beta*dEn)) then
+                S(x,y) = -S(x,y)
+                !If it was on the border, need to update the ghost cell
+                if (x==1) S(L+1,y) = -S(L+1,y)
+                if (x==L) S(0,y) = -S(0,y)
+                if (y==1) S(x,L+1) = -S(x,L+1)
+                if (y==L) S(x,0) = -S(x,0)
+                M = M + dfloat(2*S(x,y))
+                En = En + dEn
+            endif
+            enddo
         enddo
         
         !Find Autocorrelation Time
         do j = 1,ntau
-            call advance_metropolis(S,L,T0+t*dT,M,E,dE)
+            !This is an entire sweep of the Metropolis Algorithm
+            do i = 1,ns
+            !Select a spin
+            x = int(grnd()*lfact)+1
+            y = int(grnd()*lfact)+1
+            !Calculate dE. Use + because consider flipped spin in x,y
+            dEn = dfloat(2*S(x,y)*(S(x+1,y)+S(x-1,y)+S(x,y+1)+S(x,y-1)))
+            if (grnd()<dexp(-beta*dEn)) then
+                S(x,y) = -S(x,y)
+                !If it was on the border, need to update the ghost cell
+                if (x==1) S(L+1,y) = -S(L+1,y)
+                if (x==L) S(0,y) = -S(0,y)
+                if (y==1) S(x,L+1) = -S(x,L+1)
+                if (y==L) S(x,0) = -S(x,0)
+                M = M + dfloat(2*S(x,y))
+                En = En + dEn
+            endif
+            enddo
             mts(j) = dabs(M)/ns
         enddo
         
         call autocorrelationtime(mts,ntau,tau)
         !write(12,"(F7.3,I5)") float(nint(T0*10)+t)/10,tau
-        
+
         !Then start to sample
         write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
         open(11,file=namefile, action="write")
         do j=1,nr
-            do i=1,2*tau
-                call advance_metropolis(S,L,T0+t*dT,M,E,dE)
+          do ii=1,2*tau
+            !This is an entire sweep of the Metropolis Algorithm
+            do i = 1,ns
+            !Select a spin
+            x = int(grnd()*lfact)+1
+            y = int(grnd()*lfact)+1
+            !Calculate dE. Use + because consider flipped spin in x,y
+            dEn = dfloat(2*S(x,y)*(S(x+1,y)+S(x-1,y)+S(x,y+1)+S(x,y-1)))
+            if (grnd()<dexp(-beta*dEn)) then
+                S(x,y) = -S(x,y)
+                !If it was on the border, need to update the ghost cell
+                if (x==1) S(L+1,y) = -S(L+1,y)
+                if (x==L) S(0,y) = -S(0,y)
+                if (y==1) S(x,L+1) = -S(x,L+1)
+                if (y==L) S(x,0) = -S(x,0)
+                M = M + dfloat(2*S(x,y))
+                En = En + dEn
+            endif
             enddo
-            write(11,"(4F14.7)") M/ns,E/ns,dE
+          enddo
+          write(11,"(4F14.7)") M/ns, En/ns
         enddo
         close(11)
         
@@ -69,56 +123,6 @@ program ising_model
     !close(12)
     
 end program
-
-!###############################################################################
-
-subroutine advance_metropolis(S,L,T,M,E,dE)
-    
-    !Mersenne Twister RNG
-    use mtmod
-
-    integer :: L,x,y
-    real*8  :: M,E,dE
-    integer :: ns
-    real*8    :: T,beta
-    integer :: S(0:L+1,0:L+1)
-    logical :: flipflag
-    
-    ns = L*L
-    beta = 1.d0/T
-    
-    !Start Metropolis sweep
-    do i = 1,ns
-        !Select a spin
-        x = int(grnd()*L)+1
-        y = int(grnd()*L)+1
-        !Calculate dE. Use + because consider flipped spin in x,y
-        dE = dfloat(2*S(x,y)*(S(x+1,y)+S(x-1,y)+S(x,y+1)+S(x,y-1)))
-        if (dE<=0) then
-            S(x,y) = -S(x,y)
-            flipflag = .TRUE.
-        else
-            if (grnd()<dexp(-beta*dE)) then
-                S(x,y) = -S(x,y)
-                flipflag = .TRUE.
-            else
-                flipflag = .FALSE.
-            endif
-        endif
-        !If it was on the border, need to update the ghost cell
-        if (flipflag .eqv. .TRUE.) then
-            if (x==1) S(L+1,y) = -S(L+1,y)
-            if (x==L) S(0,y) = -S(0,y)
-            if (y==1) S(x,L+1) = -S(x,L+1)
-            if (y==L) S(x,0) = -S(x,0)
-            M = M + dfloat(2*S(x,y))
-            E = E + dE
-        endif
-    enddo
-    !End of a sweep of Metropolis
-    return
-    
-end subroutine
 
 !###############################################################################
 
