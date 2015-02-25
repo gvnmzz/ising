@@ -6,12 +6,12 @@ program data_analysis
 
     use mtmod
     
-    integer, parameter :: L = 20, nr=1000000, ntau = 50000 
+    integer, parameter :: L = 40, nr=1000000, ntau = 50000 
     real*8, parameter    :: T0 = 1.0, T1 = 4.0, dT = 0.1
     integer, parameter :: ns = nint((T1-T0)/dT)
     real*8    :: mts(nr),ets(nr),prefact
     integer :: i,t
-    real*8    :: mmagn,mener,vmagn,vener,mchi,vchi,mspc,vspc
+    real*8    :: mmagn,mener,vmagn,vener,mchi,vchi,mspc,vspc,mamagn,vamagn
     character(len=10) :: namefile,datafile
     
     external autocorrelationtime
@@ -22,7 +22,7 @@ program data_analysis
     write(datafile,"(A4,I2,A4)") "datl",L,".res"
     open(12,file=datafile,action="write")
     
-    do t = 0,14!,ns
+    do t = 0,ns
         print*,t
         !Open the file
         write(namefile,"(A1,I2,A1,I2,A4)") "l",L,"t",nint(T0*10)+t,".res"
@@ -31,6 +31,8 @@ program data_analysis
         do i=1,nr
             read(11,"(2F14.7)") mts(i),ets(i)
         enddo
+        
+        call statistics(mts,nr,0,mamagn,vamagn)
         
         mts = dabs(mts)
         
@@ -48,7 +50,7 @@ program data_analysis
         call jacknife(ets,nr,mspc,vspc,prefact)
         
         write(12,"(F14.7,10(2x,E14.7))") dfloat(nint(T0*10)+t)/10, &
-                    & mmagn,vmagn,mener,vener,mchi,vchi,mspc,vspc
+                    & mmagn,vmagn,mener,vener,mchi,vchi,mspc,vspc,mamagn,vamagn
         !Close the file
         close(11)
     enddo

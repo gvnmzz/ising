@@ -28,12 +28,12 @@ program ising_model
     tic = time()              !Performance evaluation
     
     !Open file to store the autocorrelation time curve
-    !write(taufile,"(A6,I2,A7)") "data/l",L,"nau.res"
-    !open(12,file=taufile,action="write")
+    write(taufile,"(A6,I2,A7)") "data/l",L,"tau.res"
+    open(12,file=taufile,action="write")
     
     
     !Start the cycle over the temperature
-    do t = 16,nint((T1-T0)/dT)
+    do t = 0,nint((T1-T0)/dT)
     
         !It is easy to start from a configuration of all spins up
         S = 1
@@ -88,7 +88,8 @@ program ising_model
         enddo
         
         call autocorrelationtime(mts,ntau,tau)
-        !write(12,"(F7.3,I5)") float(nint(T0*10)+t)/10,tau
+        write(12,"(F7.3,I5)") float(nint(T0*10)+t)/10,tau
+        cycle
 
         !Then start to sample
         write(namefile,"(A6,I2,A1,I2,A4)") "data/l",L,"t",nint(T0*10)+t,".res"
@@ -120,7 +121,7 @@ program ising_model
         
     enddo
     
-    !close(12)
+    close(12)
     
 end program
 
